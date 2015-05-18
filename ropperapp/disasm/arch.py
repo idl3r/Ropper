@@ -197,17 +197,36 @@ class ArchitectureArmThumb(Architecture):
 class ArchitectureArm64(Architecture):
 
     def __init__(self):
-        Architecture.__init__(self, CS_ARCH_ARM64, CS_MODE_ARM, 4, 4)
+        Architecture.__init__(self, CS_ARCH_ARM64, CS_MODE_ARM, 8, 4)
 
     def _initGadgets(self):
         self._endings[gadget.GadgetType.ROP] = [(b'[\x00\x20\x40\x60\x80\xa0\xc0\xe0][\x00-\x02]\x5f\xd6', 4), # ret <reg>
                                                 (b'[\x00\x20\x40\x60\x80]\x03\x5f\xd6', 4),
                                                 (b'\xc0\x03\x5f\xd6', 4)] # ret <reg>
-        self._endings[gadget.GadgetType.JOP] = [(b'[\x00\x20\x40\x60\x80\xa0\xc0\xe0][\x00-\x02]\x1f\xd6', 4), # bx <reg>
-                                                (b'[\x00\x20\x40\x60\x80]\x03\x1f\xd6', 4), # blx <reg>
-                                                (b'[\x00\x20\x40\x60\x80\xa0\xc0\xe0][\x00-\x02]\x3f\xd6', 4),
-                                                (b'[\x00\x20\x40\x60\x80]\x03\x3f\xd6', 4)] # ldm sp! ,{pc}
+        self._endings[gadget.GadgetType.JOP] = [(b'[\\x00\\x20\\x40\\x60\\x80\\xa0\\xc0\\xe0][\\x00-\\x02]\\x1f\\xd6', 4), # bx <reg>
+                                                (b'[\\x00\\x20\\x40\\x60\\x80]\\x03\\x1f\\xd6', 4), # blx <reg>
+                                                (b'[\\x00\\x20\\x40\\x60\\x80\\xa0\\xc0\\xe0][\\x00-\\x02]\\x3f\\xd6', 4),
+                                                (b'[\\x00\\x20\\x40\\x60\\x80]\\x03\\x3f\\xd6', 4)] # ldm sp! ,{pc}
 
+'''jfang'''
+'''
+Branch in aarch64:
+000x 01ii iiii iiii iiii iiii iiii iiii  -  b ADDR_PCREL26 
+010x 0100 iiii iiii iiii iiii iiix xxxx  -  b.c ADDR_PCREL19 
+xx1x 0011 0xii iiii iiii iinn nnnd dddd  -  bfm Rd Rn IMMR IMMS   
+x00x 1010 xx1x xxxx xxxx xxnn nnnd dddd  -  bic Rd Rn Rm_SFT
+x11x 1010 xx1x xxxx xxxx xxnn nnnd dddd  -  bics Rd Rn Rm_SFT
+xx10 1111 xxxx xxxx 0xx1 x1xx xxxd dddd  -  bic Vd SIMD_IMM_SFT
+xx10 1111 xxxx xxxx 10x1 01xx xxxd dddd  -  bic Vd SIMD_IMM_SFT
+xx00 1110 011m mmmm 0001 11nn nnnd dddd  -  bic Vd Vn Vm
+xx10 1110 111m mmmm 0001 11nn nnnd dddd  -  bif Vd Vn Vm
+xx10 1110 101m mmmm 0001 11nn nnnd dddd  -  bit Vd Vn Vm
+100x 01ii iiii iiii iiii iiii iiii iiii  -  bl ADDR_PCREL26 
+x10x 0110 0x1x xxxx xxxx xxnn nnnx xxxx  -  blr Rn 
+110x 0100 xx1i iiii iiii iiii iiix xx00  -  brk EXCEPTION 
+x10x 0110 000x xxxx xxxx xxnn nnnx xxxx  -  br Rn 
+xx10 1110 011m mmmm 0001 11nn nnnd dddd  -  bsl Vd Vn Vm
+'''
 
 
 class ArchitecturePPC(Architecture):
