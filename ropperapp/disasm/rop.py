@@ -137,7 +137,9 @@ class Ropper(object):
             while match:
                 offset += match.start()
                 index = match.start()
-                for x in range(1, (depth + 1) * self.__arch.align):
+                #for x in range(1, (depth + 1) * self.__arch.align):
+                # In case we just want the whole code snippet:
+                for x in range((depth) * self.__arch.align, (depth + 1) * self.__arch.align):
 
                     code_part = tmp_code[index - x:index + ending[1]]
 
@@ -160,21 +162,32 @@ class Ropper(object):
             pprinter.finishProgress();
         return self.__deleteDuplicates(toReturn, pprinter)
 
-    def __deleteDuplicates(self, gadgets, pprinter=None):
+    def __deleteDuplicates(self, gadgets):
+        '''jfang'''
+        print "__deleteDuplicates begin,", "gadget count", len(gadgets)
+        i = 0
+
         toReturn = []
-        inst = []
+        inst_dict = dict()
         gadgetString = None
-        for i,gadget in enumerate(gadgets):
+        for gadget in gadgets:
+            '''jfang'''
+            i = i + 1
+            if i % 1000 == 0:
+                print i, len(inst_dict)
+
             gadgetString = gadget._gadget
-            gadgetHash = hash(gadgetString)
-            if gadgetHash not in inst:
-                inst.append(gadgetHash)
+            gadgetStringChecksum = checksum256(gadgetString)
+
+            if gadgetStringChecksum not in inst_dict:
+                inst_dict[gadgetStringChecksum] = []            
+
+            if gadgetString not in inst_dict[gadgetStringChecksum]:
+                inst_dict[gadgetStringChecksum].append(gadgetString)
                 toReturn.append(gadget)
-            if pprinter:
-                pprinter.printProgress('clearing up...', float(i) / len(gadgets))
-        if pprinter:
-            pprinter.printProgress('clearing up...', 1)
-            pprinter.finishProgress()
+        
+        '''jfang'''
+        # raw_input("Press Enter to continue...")
         return toReturn
 
 
