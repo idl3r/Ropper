@@ -162,7 +162,7 @@ class Ropper(object):
             pprinter.finishProgress();
         return self.__deleteDuplicates(toReturn, pprinter)
 
-    def __deleteDuplicates(self, gadgets):
+    def __deleteDuplicates(self, gadgets, pprinter):
         '''jfang'''
         print "__deleteDuplicates begin,", "gadget count", len(gadgets)
         i = 0
@@ -193,3 +193,8 @@ class Ropper(object):
 
 def toBytes(*b):
     return bytes(bytearray(b))
+
+# returns total mod 256 as checksum
+# input - string
+def checksum256(st):
+    return reduce(lambda x,y:x+y, map(ord, st)) % 256
