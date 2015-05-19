@@ -1,3 +1,9 @@
+NOTE:
+Customized for arm64 vmlinux gadget search.
+Usage sample:
+ropper.py --file vmlinux --nocolor --type jop --depth 10 --arch ARM64 -I 0xFFFFFFC000680000 >ropper_log.txt
+
+
 Ropper
 ================
 
