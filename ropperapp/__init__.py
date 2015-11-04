@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # coding=utf-8
 #
 # Copyright 2014 Sascha Schirra
@@ -22,7 +23,7 @@ from .options import Options
 from .common.error import RopperError
 
 app_options = None
-VERSION='1.5.0'
+VERSION='1.4.1'
 
 def start(args):
     try:

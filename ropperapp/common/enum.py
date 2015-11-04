@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # coding=utf-8
 #
 # Copyright 2014 Sascha Schirra
@@ -219,9 +220,7 @@ class EnumMeta(type):
         elif isinstance(key, EnumElement):
             return cls.__search(str(key))
         elif isinstance(key, int) or isinstance(key, long):
-            if key in cls._revData:
-                return cls._revData[key]
-            return 'Unkown'
+            return cls._revData[key]
         raise TypeError('key has to be an instance of int/long or str:' + key.__class__.__name__)
 
     def __search(self, key):

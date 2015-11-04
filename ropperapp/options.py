@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # coding=utf-8
 #
 # Copyright 2014 Sascha Schirra
@@ -35,8 +36,8 @@ class Options(object):
 
     def _createArgParser(self):
         parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-description="""You can use ropper to display information about binary files in different file formats
-    and you can search for gadgets to build rop chains for different architectures
+description="""With ropper you can show information about files in different file formats
+and you can find gadgets to build rop chains for different architectures.
 
 supported filetypes:
   ELF
@@ -83,27 +84,6 @@ epilog="""example uses:
   ropper.py --file /bin/ls --chain execve=/bin/sh
   ropper.py --file /bin/ls --chain execve=/bin/sh --badbytes 000a0d
   ropper.py --file /bin/ls --chain mprotect=0xbfdff000:0x21000
-
-  [Search]
-  ?\t\tany character
-  %\t\tany string
-
-  Example:
-
-  ropper.py --file /bin/ls --search "mov e?x"
-  0x000067f1: mov edx, dword ptr [ebp + 0x14]; mov dword ptr [esp], edx; call eax
-  0x00006d03: mov eax, esi; pop ebx; pop esi; pop edi; pop ebp; ret ;
-  0x00006d6f: mov ebx, esi; mov esi, dword ptr [esp + 0x18]; add esp, 0x1c; ret ;
-  0x000076f8: mov eax, dword ptr [eax]; mov byte ptr [eax + edx], 0; add esp, 0x18; pop ebx; ret ;
-
-  ropper.py --file /bin/ls --search "mov [%], ecx"
-  0x000067ed: mov dword ptr [esp + 4], edx; mov edx, dword ptr [ebp + 0x14]; mov dword ptr [esp], edx; call eax;
-  0x00006f4e: mov dword ptr [ecx + 0x14], edx; add esp, 0x2c; pop ebx; pop esi; pop edi; pop ebp; ret ;
-  0x000084b8: mov dword ptr [eax], edx; ret ;
-  0x00008d9b: mov dword ptr [eax], edx; add esp, 0x18; pop ebx; ret ;
-
-  ropper.py --file /bin/ls --search "mov [%], edx" --quality 1
-  0x000084b8: mov dword ptr [eax], edx; ret ;
   \n""")
 
 
@@ -113,8 +93,6 @@ epilog="""example uses:
             '--console', help='Starts interactive commandline', action='store_true')
         parser.add_argument(
             '-f', '--file', metavar="<file>", help='The file to load')
-        parser.add_argument(
-             '--db', metavar="<dbfile>", help='The dbfile to load')
         parser.add_argument(
             '-a', '--arch', metavar="<arch>", help='The architecture of the loaded file')
         parser.add_argument(
@@ -146,8 +124,6 @@ epilog="""example uses:
             '--depth', help='Specifies the depth of search (default: 10)', metavar='<n bytes>', type=int)
         parser.add_argument(
             '--search', help='Searches for gadgets', metavar='<regex>')
-        parser.add_argument(
-            '--quality', help='The quality for gadgets which are found by search (1 = best)', metavar='<quality>', type=int)
         parser.add_argument(
             '--filter', help='Filters gadgets', metavar='<regex>')
         parser.add_argument(

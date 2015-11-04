@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # coding=utf-8
 #
 # Copyright 2014 Sascha Schirra
@@ -102,9 +103,13 @@ class Ropper(object):
                     toReturn.append(ppr)
         return toReturn
 
-    def searchRopGadgets(self, code,  offset=0x0, virtualAddress=0x0, badbytes='',depth=10, gtype=GadgetType.ALL, pprinter=None):
+    def searchRopGadgets(self, code,  offset=0x0, virtualAddress=0x0, badbytes='',depth=10, gtype=GadgetType.ALL):
         toReturn = []
+
         code = bytes(bytearray(code))
+        '''jfang'''
+        print "Search rop gadgets from", format(virtualAddress, '016x')
+        print "Code length =", str(len(code))
 
         def createGadget(code_str, codeStartAddress, ending):
             gadget = Gadget(self.__arch)
@@ -126,43 +131,27 @@ class Ropper(object):
                     break
 
             if hasret and len(gadget) > 0:
-
+                '''jfang'''
+                # print "createGadget: hasret found ", format(codeStartAddress, '016x')
                 return gadget
 
-        max_prog = len(code) * len(self.__arch.endings[gtype])
-        for ending in self.__arch.endings[gtype]:
-            offset = 0
-            tmp_code = code[:]
-            match = re.search(ending[0], tmp_code)
-            while match:
-                offset += match.start()
-                index = match.start()
-                #for x in range(1, (depth + 1) * self.__arch.align):
-                # In case we just want the whole code snippet:
-                for x in range((depth) * self.__arch.align, (depth + 1) * self.__arch.align):
+        for index in range(0, len(code), self.__arch.align):
+            for ending in self.__arch.endings[gtype]:
+                if re.match(ending[0], code[index:index + ending[1]]):
+                    # jfang
+                    # print format(index, '016x'), str(ending)
+                    # for x in range(1, (depth + 1) * self.__arch.align):
+                    for x in range((depth) * self.__arch.align, (depth + 1) * self.__arch.align):
+                        code_part = code[index - x:index + ending[1]]
 
-                    code_part = tmp_code[index - x:index + ending[1]]
+                        gadget = createGadget(
+                            code_part, index - x, ending)
 
-                    gadget = createGadget(
-                        code_part, offset - x, ending)
+                        if gadget:
+                            toReturn.append(gadget)
+        return self.__deleteDuplicates(toReturn)
 
-                    if gadget:
-                        toReturn.append(gadget)
-
-                tmp_code = tmp_code[index+1:]
-                offset += self.__arch.align
-                match = re.search(ending[0], tmp_code)
-
-                if pprinter:
-                    progress = self.__arch.endings[gtype].index(ending) * len(code) + len(code) - len(tmp_code)
-                    pprinter.printProgress('loading gadgets...', float(progress) / max_prog)
-
-        if pprinter:
-            pprinter.printProgress('loading gadgets...', 1)
-            pprinter.finishProgress();
-        return self.__deleteDuplicates(toReturn, pprinter)
-
-    def __deleteDuplicates(self, gadgets, pprinter):
+    def __deleteDuplicates(self, gadgets):
         '''jfang'''
         print "__deleteDuplicates begin,", "gadget count", len(gadgets)
         i = 0
@@ -189,6 +178,26 @@ class Ropper(object):
         '''jfang'''
         # raw_input("Press Enter to continue...")
         return toReturn
+
+    # def __deleteDuplicates(self, gadgets):
+    #     '''jfang'''
+    #     print "__deleteDuplicates begin,", "gadget count", len(gadgets)
+    #     i = 0
+
+    #     toReturn = []
+    #     inst = []
+    #     gadgetString = None
+    #     for gadget in gadgets:
+    #         '''jfang'''
+    #         i = i + 1
+    #         if i % 10000 == 0:
+    #             print i, len(inst)
+
+    #         gadgetString = gadget._gadget
+    #         if gadgetString not in inst:
+    #             inst.append(gadgetString)
+    #             toReturn.append(gadget)
+    #     return toReturn
 
 
 def toBytes(*b):

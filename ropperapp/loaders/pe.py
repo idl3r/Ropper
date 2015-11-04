@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # coding=utf-8
 #
 # Copyright 2014 Sascha Schirra
@@ -65,11 +66,10 @@ class PE(Loader):
 
     @property
     def executableSections(self):
-    #    toReturn = [self.sections['.text']]
-        toReturn = []
-        for value in self.sectionHeader:
-            if value.Characteristics & IMAGE_SCN.CNT_CODE > 0:
-                toReturn.append(self.sections[value.Name])
+        toReturn = [self.sections['.text']]
+        #for value in self.sectionHeader:
+         #   if value.Characteristics & IMAGE_SCN.CNT_CODE > 0:
+          #      toReturn.append(self.sections[value.Name])
         return toReturn
 
 
@@ -136,7 +136,7 @@ class PE(Loader):
 
     def __parseCode(self, section, p_bytes, size):
         ibytes = cast(p_bytes, POINTER(c_ubyte * size)).contents
-        s = Section(section.Name, ibytes, section.VirtualAddress + self.imageBase, section.VirtualAddress)
+        s = Section('.text', ibytes, section.VirtualAddress + self.imageBase, section.VirtualAddress)
         self.sections[s.name] = s
 
     def __parseImports(self, section, p_bytes, size):
@@ -200,7 +200,7 @@ class PE(Loader):
                     ImageDirectoryEntry.IMPORT].Size
                 self.__parseImports(section, p_tmp, size)
                 idata = True
-            if section.Name in (b'code', b'.text'):
+            if section.Name == b'.text':
                 p_tmp.value = p_bytes.value + section.PointerToRawData
                 size = section.PhysicalAddress_or_VirtualSize
                 self.__parseCode(section, p_tmp, size)

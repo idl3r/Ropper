@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # coding=utf-8
 #
 # Copyright 2014 Sascha Schirra
@@ -19,8 +20,6 @@
 
 from ropperapp.common.abstract import *
 from ropperapp.common.error import NotSupportedError
-from ropperapp.search.search import Searcher
-from ropperapp.search.search import Searcherx86
 from re import compile
 from capstone import *
 from . import gadget
@@ -40,8 +39,6 @@ class Architecture(AbstractSingleton):
         self._endings = {}
         self._badInstructions = []
         self._categories = {}
-
-        self._searcher = Searcher()
 
         self._initGadgets()
         self._initBadInstructions()
@@ -83,10 +80,6 @@ class Architecture(AbstractSingleton):
     def badInstructions(self):
         return self._badInstructions
 
-    @property
-    def searcher(self):
-        return self._searcher
-
     def __str__(self):
         return self.__class__.__name__
 
@@ -96,8 +89,6 @@ class ArchitectureX86(Architecture):
     def __init__(self):
         Architecture.__init__(self, CS_ARCH_X86, CS_MODE_32, 4, 1)
 
-        self._searcher = Searcherx86()
-
     def _initGadgets(self):
         self._endings[gadget.GadgetType.ROP] = [(b'\xc3', 1),
                                                 (b'\xc2[\x00-\xff]{2}', 3)]
@@ -106,16 +97,10 @@ class ArchitectureX86(Architecture):
             b'\xff[\x20\x21\x22\x23\x26\x27]', 2),
             (b'\xff[\xe0\xe1\xe2\xe3\xe4\xe6\xe7]', 2),
             (b'\xff[\x10\x11\x12\x13\x16\x17]', 2),
-            (b'\xff[\xd0\xd1\xd2\xd3\xd4\xd6\xd7]', 2),
-            (b'\xff[\xd0\xd1\xd2\xd3\xd4\xd6\xd7]', 2),
-            (b'\xff[\x14\x24]\x24', 3),
-            (b'\xff[\x55\x65]\x00', 3),
-            (b'\xff[\xa0\xa1\xa2\xa3\xa6\xa7][\x00-\x0ff]{4}', 6),
-            (b'\xff\xa4\x24[\x00-\x0ff]{4}', 7),
-            (b'\xff[\x90\x91\x92\x93\x94\x96\x97][\x00-\x0ff]{4}', 6)]
+            (b'\xff[\xd0\xd1\xd2\xd3\xd4\xd6\xd7]', 2)]
 
     def _initBadInstructions(self):
-        self._badInstructions = ['loop','loopne','int3', 'db', 'jne', 'je', 'jg', 'jl', 'jle', 'jge', 'ja','jb', 'jae', 'jbe']
+        self._badInstructions = ['int3', 'db', 'jne', 'je', 'jg', 'jl', 'jle', 'jge', 'ja','jb', 'jae', 'jbe']
 
     def _initCategories(self):
         self._categories = {
@@ -207,6 +192,7 @@ class ArchitectureArm64(Architecture):
                                                 (b'[\\x00\\x20\\x40\\x60\\x80]\\x03\\x1f\\xd6', 4), # blx <reg>
                                                 (b'[\\x00\\x20\\x40\\x60\\x80\\xa0\\xc0\\xe0][\\x00-\\x02]\\x3f\\xd6', 4),
                                                 (b'[\\x00\\x20\\x40\\x60\\x80]\\x03\\x3f\\xd6', 4)] # ldm sp! ,{pc}
+        # self._endings[gadget.GadgetType.JOP] = [(b'[\\x00\\x20\\x40\\x60\\x80\\xa0\\xc0\\xe0][\\x00-\\x02]\\x3f\\xd6', 4)]
 
 '''jfang'''
 '''
