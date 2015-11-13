@@ -184,6 +184,9 @@ class ArchitectureArm64(Architecture):
     def __init__(self):
         Architecture.__init__(self, CS_ARCH_ARM64, CS_MODE_ARM, 8, 4)
 
+    def _initBadInstructions(self):
+        self._badInstructions = ['b', 'bl']
+
     def _initGadgets(self):
         self._endings[gadget.GadgetType.ROP] = [(b'[\x00\x20\x40\x60\x80\xa0\xc0\xe0][\x00-\x02]\x5f\xd6', 4), # ret <reg>
                                                 (b'[\x00\x20\x40\x60\x80]\x03\x5f\xd6', 4),
