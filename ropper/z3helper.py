@@ -160,7 +160,7 @@ class ConstraintCompiler(object):
         size = int(register_init.split('_')[-1])
         register_expr = create_register_expression(register_init, size)
         mem_expr = create_read_memory_expression(memory, register_expr, size)
-        return mem_expr
+        # print mem_expr
 
     def _popReg(self, pop, tokens):
         reg_name = tokens.pop()

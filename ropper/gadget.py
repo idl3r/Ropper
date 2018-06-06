@@ -60,6 +60,16 @@ class Gadget(object):
         self.__bytes = bytes
         self.__info = semantic_information
         self.__analysed = semantic_information is not None
+        self.code_str = None
+
+        self.regs_read = []
+        self.regs_write = []
+
+        self.input_regs = set()
+        self.bound_regs = set()
+        self.controlled_regs = set()
+        self.clobbered_regs = set()
+        self.usable = True
         #if init:
         #    self.__initialize(lines, bytes)
 
@@ -146,13 +156,16 @@ class Gadget(object):
             self._bytes = bytes
         self.__lines = lines
 
-    def append(self, address, mnem, args='', bytes=None):
+    def append(self, address, mnem, args='', bytes=None, regs_read='', regs_write=''):
         if args:
             self._lines.append((address, mnem + ' ' + args, mnem ,args))
             self._gadget += mnem + ' ' + args + '; '
         else:
             self._lines.append((address, mnem, mnem,args))
             self._gadget += mnem + '; '
+
+        self.regs_read.append((address, regs_read))
+        self.regs_write.append((address, regs_write))
 
         if bytes:
             self.bytes += bytes
@@ -203,6 +216,29 @@ class Gadget(object):
         toReturn += self.simpleInstructionString()
         if self.__info:
             toReturn += '\nClobbered Register = %s; StackPointer-Offset = %s\n' % (", ".join(list(self.info.clobberedRegisters)),self.info.spOffset if self.info.spOffset is not None else 'Undef')
+
+        toReturn += '\n'
+        # for (addr, s) in self.regs_read:
+            # toReturn += '%s: %s' % (cstr(toHex(addr)), s)
+        toReturn += "input: "
+        for op in self.input_regs:
+            toReturn += "%s," % (op)
+        toReturn += "\n"
+        toReturn += "bound: "
+        for op in self.bound_regs:
+            toReturn += "%s," % (op)
+        toReturn += "\n"
+        toReturn += "controlled: "
+        for op in self.controlled_regs:
+            toReturn += "%s," % (op)
+        toReturn += "\n"
+        toReturn += "clobbered: "
+        for op in self.clobbered_regs:
+            toReturn += "%s," % (op)
+        toReturn += "\n"
+        toReturn += "Usable: %s\n" % (str(self.usable))
+
+
         return toReturn
 
     @property

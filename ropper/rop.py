@@ -30,6 +30,8 @@ import struct
 import sys
 import capstone
 
+import cProfile
+
 # Optional keystone support
 try:
     import keystone
@@ -355,8 +357,11 @@ class Ropper(object):
         for cpu in range(process_count):
             ending_queue.put(None)
 
+        print("Process count: %d" % process_count)
+
+        proc_id = 0
         for cpu in range(process_count):
-            processes.append(Process(target=self.__gatherGadgetsByEndings, args=(tmp_code, arch, binary.fileName, section.name, section.offset, ending_queue, gadget_queue, instruction_count), name="GadgetSearch%d"%cpu))
+            processes.append(Process(target=self.__gatherGadgetsByEndingsProfiling, args=(tmp_code, arch, binary.fileName, section.name, section.offset, ending_queue, gadget_queue, instruction_count, proc_id), name="GadgetSearch%d"%cpu))
             processes[cpu].daemon=True
             processes[cpu].start()
 
@@ -377,7 +382,7 @@ class Ropper(object):
             
         return to_return
 
-    def __gatherGadgetsByEndings(self,code, arch, fileName, sectionName, offset, ending_queue, gadget_queue, instruction_count):
+    def gatherGadgetsByEndings(self,code, arch, fileName, sectionName, offset, ending_queue, gadget_queue, instruction_count, proc_id):
         
         #try:
         while True:
@@ -386,6 +391,7 @@ class Ropper(object):
                 ending_queue.task_done()
                 break
             
+            # print("__gatherGadgetsByEndings")
             gadgets = self.__gatherGadgetsByEnding(code, arch, fileName, sectionName, offset, ending, instruction_count)
             
             gadget_queue.put(gadgets)
@@ -395,9 +401,19 @@ class Ropper(object):
         #except BaseException as e:
         #    raise RopperError(e)
         
+    def test(self, num):
+        print(num)
+        pass
+
+    def __gatherGadgetsByEndingsProfiling(self,code, arch, fileName, sectionName, offset, ending_queue, gadget_queue, instruction_count, proc_id):
+        # cProfile.runctx('self.__gatherGadgetsByEndings(code, arch, fileName, sectionName, offset, ending_queue, gadget_queue, instruction_count, proc_id)', globals(), locals(), 'prof%d.prof' % proc_id)
+        # cProfile.runctx('self.test(proc_id)', globals(), locals())
+        cProfile.runctx('self.gatherGadgetsByEndings(code, arch, fileName, sectionName, offset, ending_queue, gadget_queue, instruction_count, proc_id)', globals(), locals())
 
     def __gatherGadgetsByEnding(self, code, arch, fileName, sectionName, offset, ending, instruction_count):
         vaddrs = set()
+        # code_part_set = set()
+        code_part_sets = {}
         offset_tmp = 0
         
         tmp_code = code[:]
@@ -412,14 +428,28 @@ class Ropper(object):
                 #for x in range(arch.align, (depth + 1) * arch.align, arch.align): # This can be used if you want to use a bytecount instead of an instruction count per gadget
                 none_count = 0
 
-                for x in range(0, index+1, arch.align):
+                # for x in range(0, index+1, arch.align):
+                # for x in range((instruction_count - 1) * arch.align, index+1, arch.align):
+                # for x in range((instruction_count - 1) * arch.align, instruction_count * arch.align, arch.align):
+                for x in range(0, instruction_count * arch.align, arch.align):
                     code_part = tmp_code[index - x:index + ending[1]]
+                    code_len = x + 1
+
+                    try:
+                        if code_part in code_part_sets[code_len]:
+                            continue
+                    except KeyError:
+                        code_part_sets[code_len] = set()
+
+                    code_part_sets[code_len].add(code_part)
+
                     gadget, leng = self.__createGadget(arch, code_part, offset + offset_tmp - x , ending, fileName, sectionName)
                     if gadget:
                         if leng > instruction_count:
                             break
                         if gadget:
                             to_return.append(gadget)
+                            # print("%d -> %d" % (x, leng))
                         none_count = 0
                     else:
                         none_count += 1
@@ -431,25 +461,221 @@ class Ropper(object):
 
             match = re.search(ending[0], tmp_code)
 
+        # print len(to_return)
         return to_return
+
+    def __setop(self, op, target, other1, other2):
+        if op in other1:
+            other1.remove(op)
+        if op in other2:
+            other2.remove(op)
+        if op not in target:
+            target.add(op)
 
     def __createGadget(self, arch, code_str, codeStartAddress, ending, binary=None, section=None):
         gadget = Gadget(binary, section, arch)
         hasret = False
 
+        gadget.code_str = code_str  # Raw code bytes
+
         disassembler = self.__getCs(arch)
+        disassembler.detail = True
+
+        # Register status:
+        #   i:  input register
+        #   b:  bound to input register
+        #   c:  controlled register (by input)
+        #   x:  clobbered register by other instructions
+        #   register can be both input and some other status apparently, but eventually it will be either bound, controlled, clobbered or just irrelevant
+        # Global flag:
+        #   usable  : if whole gadget is clobbered
+        # Transition rules:
+        #   ldr, ldp:
+        #       if op2/op3 is currently not marked, then mark it input
+        #       if op2/op3 is currently input/bound/controlled, then op1/(op1/op2) become controlled
+        #   str, stp:
+        #       if op2/op3 is not input/bound or controlled, then this instruction implies a uncontrolled write and considered unusable
+        #   mov, add, sub:
+        #       if op2 is not marked, then op2 is input
+        #       op1 is marked as bound if op2 is input/bound, or controlled if op2 is controlled
+        #       otherwise op1 is clobberred
+        #   movz:
+        #       clobber op1
+        #   br, blr:
+        #       unusable of op1 is clobbered
+        #       mark op1 as input if it is not markedl
+        #   ldrb, ldrh, adrp:
+        #       for now, clobber op1
+        #   b, bl:
+        #       already bad instructions
+        input_regs = set()
+        bound_regs = set()
+        controlled_regs = set()
+        clobbered_regs = set()
+        usable = True
 
         for i in disassembler.disasm(code_str, codeStartAddress):
+            (regs_read, regs_write) = i.regs_access()   # that's why we set detail = True
+
+            if (i.mnemonic in ['ldr']):
+                # print("ldr %s; %d" % (i.op_str, len(i.operands)))
+                op1 = i.reg_name(i.operands[0].reg)
+                if op1.startswith('w'):
+                    fullsize_op = 'x' + op1[1:]
+                    self.__setop(fullsize_op, clobbered_regs, bound_regs, controlled_regs)
+                else:
+                    if (len(i.operands) == 2) and \
+                    (i.operands[1].type == capstone.arm64.ARM64_OP_MEM) and \
+                    (i.operands[1].mem.base != 0) and \
+                    (i.operands[1].mem.index == 0):
+                        # print("ldr %s; %d" % (i.op_str, len(i.operands)))
+                        op2 = i.reg_name(i.operands[1].mem.base)
+
+                        if op2 not in (input_regs | bound_regs | controlled_regs | clobbered_regs):
+                            input_regs.add(op2)
+
+                        if ((op2 in input_regs) and (op2 not in clobbered_regs)) or \
+                        (op2 in bound_regs) or \
+                        (op2 in controlled_regs):
+                            # op1 be controlled
+                            self.__setop(op1, controlled_regs, bound_regs, clobbered_regs)
+                        else:
+                            # op1 is clobbered
+                            self.__setop(op1, clobbered_regs, controlled_regs, bound_regs)
+                    else:
+                        self.__setop(op1, clobbered_regs, controlled_regs, bound_regs)
+            elif (i.mnemonic in ['ldp']):
+                op1 = i.reg_name(i.operands[0].reg)
+                op2 = i.reg_name(i.operands[1].reg)
+
+                if op1.startswith('w'):
+                    fullsize_op = 'x' + op1[1:]
+                    self.__setop(fullsize_op, clobbered_regs, bound_regs, controlled_regs)
+                    fullsize_op = 'x' + op2[1:]
+                    self.__setop(fullsize_op, clobbered_regs, bound_regs, controlled_regs)
+                else:
+                    if (len(i.operands) == 3) and \
+                    (i.operands[2].type == capstone.arm64.ARM64_OP_MEM) and \
+                    (i.operands[2].mem.base != 0) and \
+                    (i.operands[2].mem.index == 0):
+                        # print("ldp %s; %d" % (i.op_str, len(i.operands)))
+                        op3 = i.reg_name(i.operands[2].mem.base)
+
+                        if op3 not in (input_regs | bound_regs | controlled_regs | clobbered_regs):
+                            input_regs.add(op3)
+
+                        if ((op3 in input_regs) and (op3 not in clobbered_regs)) or \
+                        (op3 in bound_regs) or \
+                        (op3 in controlled_regs):
+                            # op1 be controlled
+                            self.__setop(op1, controlled_regs, bound_regs, clobbered_regs)
+                            self.__setop(op2, controlled_regs, bound_regs, clobbered_regs)
+                        else:
+                            # op1 is clobbered
+                            self.__setop(op1, clobbered_regs, controlled_regs, bound_regs)
+                            self.__setop(op2, clobbered_regs, controlled_regs, bound_regs)
+                    else:
+                        self.__setop(op1, clobbered_regs, controlled_regs, bound_regs)
+                        self.__setop(op2, clobbered_regs, controlled_regs, bound_regs)
+            elif (i.mnemonic in ['str', 'stp']):
+                pass
+            elif (i.mnemonic in ['mov', 'add', 'sub']):
+                op1 = i.reg_name(i.operands[0].reg)
+                op2 = i.reg_name(i.operands[1].reg)
+
+                if op1.startswith('w'):
+                    fullsize_op = 'x' + op1[1:]
+                    self.__setop(fullsize_op, clobbered_regs, bound_regs, controlled_regs)
+                else:
+                    if (i.mnemonic != 'mov') and \
+                    (i.operands[2].type != capstone.arm64.ARM64_OP_IMM):
+                        self.__setop(op1, clobbered_regs, controlled_regs, bound_regs)
+                    else:
+                        if op2 not in (input_regs | bound_regs | controlled_regs | clobbered_regs):
+                            input_regs.add(op2)
+                        if ((op2 in input_regs) and (op2 not in clobbered_regs)) or \
+                        (op2 in bound_regs):
+                            self.__setop(op1, bound_regs, controlled_regs, clobbered_regs)
+                        elif (op2 in controlled_regs):
+                            self.__setop(op1, controlled_regs, bound_regs, clobbered_regs)
+                        else:
+                            self.__setop(op1, clobbered_regs, bound_regs, controlled_regs)
+            elif (i.mnemonic in ['br', 'blr']):
+                op1 = i.reg_name(i.operands[0].reg)
+
+                if op1 in clobbered_regs:
+                    usable = False
+                elif (op1 in input_regs) and \
+                (op1 not in controlled_regs):
+                    usable = False
+                elif op1 not in (input_regs | bound_regs | controlled_regs | clobbered_regs):
+                    input_regs.add(op1)
+            elif (i.mnemonic in ['ldrb', 'ldrh', 'adrp', 'movz']):
+                op1 = i.reg_name(i.operands[0].reg)
+
+                if op1.startswith('w'):
+                    fullsize_op = 'x' + op1[1:]
+                    op1 = fullsize_op
+                self.__setop(op1, clobbered_regs, bound_regs, controlled_regs)
+            elif (i.mnemonic in ['cbnz', 'tbnz']):
+                op1 = i.reg_name(i.operands[0].reg)
+
+                if op1.startswith('w'):
+                    fullsize_op = 'x' + op1[1:]
+                    op1 = fullsize_op
+
+                # if op1 not in (input_regs | bound_regs | controlled_regs | clobbered_regs):
+                #     input_regs.add(op1)
+                elif (op1 in input_regs) or \
+                (op1 in bound_regs) or \
+                (op1 in clobbered_regs):
+                    usable = False
+            elif (i.mnemonic in ['cbz', 'tbz']):
+                op1 = i.reg_name(i.operands[0].reg)
+
+                if op1.startswith('w'):
+                    fullsize_op = 'x' + op1[1:]
+                    op1 = fullsize_op
+
+                if op1 not in (input_regs | bound_regs | controlled_regs | clobbered_regs):
+                    input_regs.add(op1)
+                elif (op1 in input_regs) or \
+                (op1 in bound_regs) or \
+                (op1 in clobbered_regs):
+                    usable = False
+
+
+            # if arch == ropper.arch.ARM64:
+            #     str_regs_read = ''
+            #     for r in regs_read:
+            #         str_regs_read += i.reg_name(r)
+            #         str_regs_read += ' '
+
+            #     str_regs_write = ''
+            #     for r in regs_write:
+            #         str_regs_write += i.reg_name(r)
+            #         str_regs_write += ' '
+
+            # for r in i.regs_read:
+            #     print("%s " %i.reg_name(r)),
+            # print
+
             if re.match(ending[0], i.bytes):
                 hasret = True
             
             if hasret or i.mnemonic not in arch.badInstructions:
                 gadget.append(
+                    # i.address, i.mnemonic,i.op_str, bytes=i.bytes, regs_read = str_regs_read, regs_write = str_regs_write)
                     i.address, i.mnemonic,i.op_str, bytes=i.bytes)
 
             if hasret or i.mnemonic in arch.badInstructions:
                 break
 
+        gadget.input_regs = input_regs
+        gadget.bound_regs = bound_regs
+        gadget.controlled_regs = controlled_regs
+        gadget.clobbered_regs = clobbered_regs
+        gadget.usable = usable
 
 
         leng = len(gadget)

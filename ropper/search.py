@@ -129,17 +129,27 @@ class Searcher(object):
                 
                 #constraint_values = self.extractValues(constraints, semantic_info, gadget.arch)
                 cc = z3helper.ConstraintCompiler(gadget.arch, semantic_info)
-                constraint_values = cc.getSymbols(constraints)      
+                constraint_values = cc.getSymbols(constraints)
+
+                print("processing gadget: [ ", gadget, "]") #debug
                           
                 if self.__isSimilarGadget(gadget, found_gadgets) \
                 or self.__areRegistersNotUsed(constraint_values, semantic_info) \
                 or self.__areStableRegistersClobbered(stableRegs, semantic_info.clobberedRegisters):
+                    print("irrelevant gadget!\n")    #debug
                     continue
                 constraint_string = cc.compile(';'.join(constraints))
+                print("constrain_string: [", constraint_string, "]") # debug
                 if constraint_key not in semantic_info.checkedConstraints:
                     set_reg = constraint_values[0][0]
                     slice_instructions = []
+
+                    # print "---------"
+                    # print semantic_info.expressions
+                    # print "---------"
+
                     slice = slicer.slice(semantic_info.expressions, [set_reg for set_reg, get_reg in constraint_values])
+                    # print slice.instructions
                     count += 1
                     solver = z3.Solver()
 

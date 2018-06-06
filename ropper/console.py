@@ -1002,9 +1002,11 @@ nx\t- Clears the NX-Flag (ELF|PE)"""
                 stableRegs.append(s[1:])
             else:
                 constraint = s.strip()
-        constraints[-1] = constraint
+                constraints[-1] = constraint
         for c in range(len(constraints)):
             constraints[c] = constraints[c].strip()
+
+        # print constraints
 
         self.__printInfo('Searching for gadgets: ' + text)
         old = None
