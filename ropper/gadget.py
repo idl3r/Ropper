@@ -221,19 +221,19 @@ class Gadget(object):
         # for (addr, s) in self.regs_read:
             # toReturn += '%s: %s' % (cstr(toHex(addr)), s)
         toReturn += "input: "
-        for op in self.input_regs:
+        for op in sorted(self.input_regs, cmp=cmp_func):
             toReturn += "%s," % (op)
         toReturn += "\n"
         toReturn += "bound: "
-        for op in self.bound_regs:
+        for op in sorted(self.bound_regs, cmp=cmp_func):
             toReturn += "%s," % (op)
         toReturn += "\n"
         toReturn += "controlled: "
-        for op in self.controlled_regs:
+        for op in sorted(self.controlled_regs, cmp=cmp_func):
             toReturn += "%s," % (op)
         toReturn += "\n"
         toReturn += "clobbered: "
-        for op in self.clobbered_regs:
+        for op in sorted(self.clobbered_regs, cmp=cmp_func):
             toReturn += "%s," % (op)
         toReturn += "\n"
         toReturn += "Usable: %s\n" % (str(self.usable))
@@ -298,3 +298,9 @@ class Gadget(object):
     def __repr__(self):
         return 'Gadget(%s, %s, %s, %s, %s, %s)' % (repr(self.fileName), repr(self.section), repr(self.__arch), repr(self.__lines), repr(self._bytes), repr(self.info))
 
+
+def cmp_func(a, b):
+    # sort by length and then alphabetically in lowercase
+    if len(a) == len(b):
+        return cmp(a, b)
+    return cmp(len(a), len(b))

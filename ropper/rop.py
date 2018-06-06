@@ -515,7 +515,7 @@ class Ropper(object):
         usable = True
 
         for i in disassembler.disasm(code_str, codeStartAddress):
-            (regs_read, regs_write) = i.regs_access()   # that's why we set detail = True
+            # (regs_read, regs_write) = i.regs_access()   # that's why we set detail = True
 
             if (i.mnemonic in ['ldr']):
                 # print("ldr %s; %d" % (i.op_str, len(i.operands)))
@@ -610,7 +610,7 @@ class Ropper(object):
                     usable = False
                 elif op1 not in (input_regs | bound_regs | controlled_regs | clobbered_regs):
                     input_regs.add(op1)
-            elif (i.mnemonic in ['ldrb', 'ldrh', 'adrp', 'movz']):
+            elif (i.mnemonic in ['ldrb', 'ldrh', 'adrp', 'movz', 'movk', 'movn']):
                 op1 = i.reg_name(i.operands[0].reg)
 
                 if op1.startswith('w'):
@@ -639,9 +639,7 @@ class Ropper(object):
 
                 if op1 not in (input_regs | bound_regs | controlled_regs | clobbered_regs):
                     input_regs.add(op1)
-                elif (op1 in input_regs) or \
-                (op1 in bound_regs) or \
-                (op1 in clobbered_regs):
+                elif (op1 in clobbered_regs):
                     usable = False
 
 
