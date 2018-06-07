@@ -203,9 +203,11 @@ class Console(cmd.Cmd):
         
         #self.__binary.printer = FileDataPrinter.create(self.__binary.type)
 
-    def __printGadget(self, gadget, detailed=False):
+    def __printGadget(self, gadget, detailed=False, tableFormat=0):
         if detailed:
             self.__cprinter.println(gadget)
+        elif self.__options.table:
+            self.__cprinter.println(gadget.tableString())
         else:
             self.__cprinter.println(gadget.simpleString())
 
@@ -293,6 +295,9 @@ class Console(cmd.Cmd):
 
     def __printGadgets(self, gadgets, category=None, header='Gadgets', detailed=False):
         self.__getDataPrinter(self.currentFile.type).printTableHeader(header)
+
+        if self.__options.table:
+            self.__cprinter.println('num of input\tinput\tnum of bound\tbound\tnum of controlled\tcontrolled\tnum of clobber\tclobber\tusable\tsimpleString')
 
         counter = 0
         for g in gadgets:

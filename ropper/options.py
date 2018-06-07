@@ -204,6 +204,8 @@ epilog="""example uses:
             '--semantic', help='semantic search for gadgets', metavar='constraint')
         parser.add_argument(
             '--count-of-findings', help='Max count of gadgets which will be printed with semantic search (0 = undefined, default: 5)', metavar='<count of gadgets>', type=int, default=5)
+        parser.add_argument(
+            '--table', help='Output as table', action='store_true')
         return parser
 
     def _analyseArguments(self):
@@ -235,6 +237,8 @@ epilog="""example uses:
         ropper_options['type'] = self.__args.type
         ropper_options['cfg_only'] = self.__args.cfg_only
         ropper_options['count_of_findings'] = self.__args.count_of_findings
+        ropper_options['table'] = self.__args.table
+        # print("table = %s\n" % (str(self.__args.table)))
         self.ropper_options = ropper_options
 
 

@@ -204,6 +204,30 @@ class Gadget(object):
 
         return toReturn
 
+    def tableString(self):
+        # num of input  input   num of bound    bound   num of controlled   controlled  num of clobber  clobber usable  simpleString
+        str_input_regs = ''
+        for op in sorted(self.input_regs, cmp=cmp_func):
+             str_input_regs += "%s," % (op)
+        str_bound_regs = ''
+        for op in sorted(self.bound_regs, cmp=cmp_func):
+             str_bound_regs += "%s," % (op)
+        str_controlled_regs = ''
+        for op in sorted(self.controlled_regs, cmp=cmp_func):
+             str_controlled_regs += "%s," % (op)
+        str_clobbered_regs = ''
+        for op in sorted(self.clobbered_regs, cmp=cmp_func):
+             str_clobbered_regs += "%s," % (op)
+
+        toReturn = '%d\t%s\t%d\t%s\t%d\t%s\t%d\t%s\t%s\t%s' % ( \
+            len(self.input_regs), str_input_regs, \
+            len(self.bound_regs), str_bound_regs, \
+            len(self.controlled_regs), str_controlled_regs, \
+            len(self.clobbered_regs), str_clobbered_regs, \
+            str(self.usable), self.simpleString())
+
+        return toReturn
+
     def simpleString(self):
         analyseColor = Color.CYAN if self.__info else Color.RED
         address = self.__lines[0][0]
@@ -217,26 +241,26 @@ class Gadget(object):
         if self.__info:
             toReturn += '\nClobbered Register = %s; StackPointer-Offset = %s\n' % (", ".join(list(self.info.clobberedRegisters)),self.info.spOffset if self.info.spOffset is not None else 'Undef')
 
-        toReturn += '\n'
-        # for (addr, s) in self.regs_read:
-            # toReturn += '%s: %s' % (cstr(toHex(addr)), s)
-        toReturn += "input: "
-        for op in sorted(self.input_regs, cmp=cmp_func):
-            toReturn += "%s," % (op)
-        toReturn += "\n"
-        toReturn += "bound: "
-        for op in sorted(self.bound_regs, cmp=cmp_func):
-            toReturn += "%s," % (op)
-        toReturn += "\n"
-        toReturn += "controlled: "
-        for op in sorted(self.controlled_regs, cmp=cmp_func):
-            toReturn += "%s," % (op)
-        toReturn += "\n"
-        toReturn += "clobbered: "
-        for op in sorted(self.clobbered_regs, cmp=cmp_func):
-            toReturn += "%s," % (op)
-        toReturn += "\n"
-        toReturn += "Usable: %s\n" % (str(self.usable))
+        # toReturn += '\n'
+        # # for (addr, s) in self.regs_read:
+        #     # toReturn += '%s: %s' % (cstr(toHex(addr)), s)
+        # toReturn += "input: "
+        # for op in sorted(self.input_regs, cmp=cmp_func):
+        #     toReturn += "%s," % (op)
+        # toReturn += "\n"
+        # toReturn += "bound: "
+        # for op in sorted(self.bound_regs, cmp=cmp_func):
+        #     toReturn += "%s," % (op)
+        # toReturn += "\n"
+        # toReturn += "controlled: "
+        # for op in sorted(self.controlled_regs, cmp=cmp_func):
+        #     toReturn += "%s," % (op)
+        # toReturn += "\n"
+        # toReturn += "clobbered: "
+        # for op in sorted(self.clobbered_regs, cmp=cmp_func):
+        #     toReturn += "%s," % (op)
+        # toReturn += "\n"
+        # toReturn += "Usable: %s\n" % (str(self.usable))
 
 
         return toReturn
