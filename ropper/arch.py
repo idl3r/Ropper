@@ -422,7 +422,7 @@ class ArchitectureArm64(Architecture):
                                                 (b'[\\x00\\x20\\x40\\x60\\x80]\\x03\\x3f\\xd6', 4)] # ldm sp! ,{pc}
 
     def _initBadInstructions(self):
-        self._badInstructions = ['bl', 'b', 'b.ne', 'b.lt']
+        self._badInstructions = ['bl', 'b', 'b.ne', 'b.lt', 'b.eq', 'b.gt']
 
 
 class ArchitecturePPC(Architecture):
